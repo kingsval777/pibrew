@@ -3,37 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi Brew Cyber Cafe</title>
+    <title>.Pi Brew | Cyber Cafe</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: sans-serif; text-align: center; padding: 50px; }
-        .card { border: 1px solid #ff00ff; padding: 20px; border-radius: 15px; background: rgba(255,0,255,0.05); }
-        button { background: #ff00ff; color: #white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        :root { --neon: #00f2ff; --pink: #ff00ff; --bg: #050505; }
+        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow-x: hidden; }
+        .nexus-border { border: 2px solid var(--neon); padding: 30px; border-radius: 5px; box-shadow: 0 0 15px var(--neon), inset 0 0 5px var(--neon); background: rgba(0, 242, 255, 0.05); text-align: center; max-width: 90%; }
+        h1 { font-size: 2.5rem; text-transform: uppercase; letter-spacing: 5px; color: var(--pink); text-shadow: 2px 2px var(--neon); margin-bottom: 10px; }
+        .gcv-tag { font-size: 0.8rem; color: var(--neon); margin-bottom: 20px; border: 1px solid var(--neon); padding: 5px; display: inline-block; }
+        .status-box { margin: 20px 0; padding: 10px; border: 1px solid #333; background: #111; font-size: 0.9rem; }
+        button { background: transparent; border: 2px solid var(--pink); color: var(--pink); padding: 15px 30px; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: 0.3s; box-shadow: 0 0 10px var(--pink); margin: 10px; }
+        button:hover { background: var(--pink); color: #000; box-shadow: 0 0 25px var(--pink); }
+        button:disabled { border-color: #444; color: #444; box-shadow: none; cursor: not-allowed; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>PI BREW</h1>
-        <p>Fixed GCV: 1 Pi = $314,159</p>
-        <div id="user-info">Authenticating...</div>
-        <button onclick="login()">Login with Pi</button>
+
+<div class="nexus-border">
+    <h1>.PI BREW</h1>
+    <div class="gcv-tag">ENCRYPTED VALUATION: 1 PI = $314,159</div>
+    
+    <div class="status-box" id="status">INITIALIZING SYSTEM...</div>
+
+    <div id="auth-section">
+        <button onclick="login()">Access Identity</button>
     </div>
 
-    <script>
-        const Pi = window.Pi;
-        Pi.init({ version: "2.0", sandbox: true });
+    <div id="payment-section" style="display:none;">
+        <p>Current Item: Cyber-Latte (0.001 Pi)</p>
+        <button id="pay-btn" onclick="transferPi()">Authorize Payment</button>
+    </div>
+</div>
 
-        async function login() {
-            try {
-                const scopes = ['username', 'payments'];
-                const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
-                document.getElementById('user-info').innerText = "Welcome, " + auth.user.username;
-            } catch (err) {
-                console.error(err);
-            }
+<script>
+    const Pi = window.Pi;
+    Pi.init({ version: "2.0", sandbox: true });
+
+    const statusEl = document.getElementById('status');
+    const authSec = document.getElementById('auth-section');
+    const paySec = document.getElementById('payment-section');
+
+    async function login() {
+        try {
+            statusEl.innerText = "AUTHENTICATING...";
+            const scopes = ['username', 'payments'];
+            const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+            
+            statusEl.innerText = `WELCOME, PIONEER [${auth.user.username}]`;
+            authSec.style.display = 'none';
+            paySec.style.display = 'block';
+        } catch (err) {
+            statusEl.innerText = "AUTH_ERROR: CHECK PI BROWSER";
+            console.error(err);
         }
+    }
 
-        function onIncompletePaymentFound(payment) { /* Handle later */ }
-    </script>
+    async function transferPi() {
+        const payBtn = document.getElementById('pay-btn');
+        payBtn.disabled = true;
+        statusEl.innerText = "OPENING WALLET...";
+
+        try {
+            const payment = await Pi.createPayment({
+                amount: 0.001,
+                memo: "Cyber-Latte Refuel",
+                metadata: { orderId: "BREW-" + Date.now() },
+            }, {
+                onReadyForServerApproval: (paymentId) => {
+                    statusEl.innerText = "WAITING FOR APPROVAL...";
+                    // Normally you'd call your server here. 
+                    // For Step 10, the UI will trigger the Pi Wallet overlay.
+                },
+                onReadyForServerCompletion: (paymentId, txid) => {
+                    statusEl.innerText = "TRANSACTION SUCCESSFUL!";
+                },
+                onCancel: (paymentId) => {
+                    statusEl.innerText = "TRANSACTION ABORTED.";
+                    payBtn.disabled = false;
+                },
+                onError: (error, payment) => {
+                    statusEl.innerText = "TRANSACTION_FAILURE";
+                    payBtn.disabled = false;
+                },
+            });
+        } catch (err) {
+            statusEl.innerText = "SYSTEM_CRASH_DURING_PAY";
+            payBtn.disabled = false;
+        }
+    }
+
+    function onIncompletePaymentFound(payment) {
+        statusEl.innerText = "RECOVERING PENDING PAYMENT...";
+    }
+</script>
+
 </body>
 </html>
