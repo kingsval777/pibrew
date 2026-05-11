@@ -7,31 +7,30 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         :root { --neon: #00f2ff; --pink: #ff00ff; --bg: #050505; }
-        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow-x: hidden; }
-        .nexus-border { border: 2px solid var(--neon); padding: 30px; border-radius: 5px; box-shadow: 0 0 15px var(--neon), inset 0 0 5px var(--neon); background: rgba(0, 242, 255, 0.05); text-align: center; max-width: 90%; }
-        h1 { font-size: 2.5rem; text-transform: uppercase; letter-spacing: 5px; color: var(--pink); text-shadow: 2px 2px var(--neon); margin-bottom: 10px; }
-        .gcv-tag { font-size: 0.8rem; color: var(--neon); margin-bottom: 20px; border: 1px solid var(--neon); padding: 5px; display: inline-block; }
-        .status-box { margin: 20px 0; padding: 10px; border: 1px solid #333; background: #111; font-size: 0.9rem; }
-        button { background: transparent; border: 2px solid var(--pink); color: var(--pink); padding: 15px 30px; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: 0.3s; box-shadow: 0 0 10px var(--pink); margin: 10px; }
-        button:hover { background: var(--pink); color: #000; box-shadow: 0 0 25px var(--pink); }
-        button:disabled { border-color: #444; color: #444; box-shadow: none; cursor: not-allowed; }
+        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .nexus-border { border: 2px solid var(--neon); padding: 30px; border-radius: 5px; box-shadow: 0 0 15px var(--neon); background: rgba(0, 242, 255, 0.05); text-align: center; max-width: 90%; }
+        h1 { font-size: 2.2rem; text-transform: uppercase; color: var(--pink); text-shadow: 2px 2px var(--neon); margin: 0; }
+        .gcv-tag { font-size: 0.8rem; color: var(--neon); margin: 15px 0; border: 1px solid var(--neon); padding: 5px; display: inline-block; }
+        .status-box { margin: 20px 0; padding: 10px; border: 1px solid #333; background: #111; font-size: 0.9rem; color: var(--neon); min-height: 1.2em; }
+        button { background: transparent; border: 2px solid var(--pink); color: var(--pink); padding: 15px 30px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px var(--pink); transition: 0.3s; }
+        button:hover { background: var(--pink); color: #000; }
+        button:disabled { border-color: #444; color: #444; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
 <div class="nexus-border">
     <h1>.PI BREW</h1>
-    <div class="gcv-tag">ENCRYPTED VALUATION: 1 PI = $314,159</div>
-    
-    <div class="status-box" id="status">INITIALIZING SYSTEM...</div>
+    <div class="gcv-tag">1 PI = $314,159</div>
+    <div class="status-box" id="status">INITIATING...</div>
 
     <div id="auth-section">
-        <button onclick="login()">Access Identity</button>
+        <button onclick="login()">LOG IN</button>
     </div>
 
     <div id="payment-section" style="display:none;">
-        <p>Current Item: Cyber-Latte (0.001 Pi)</p>
-        <button id="pay-btn" onclick="transferPi()">Authorize Payment</button>
+        <p>ORDER: Cyber-Latte (0.01 Pi)</p>
+        <button id="pay-btn" onclick="transferPi()">CONFIRM TEST PAYMENT</button>
     </div>
 </div>
 
@@ -46,15 +45,12 @@
     async function login() {
         try {
             statusEl.innerText = "AUTHENTICATING...";
-            const scopes = ['username', 'payments'];
-            const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
-            
-            statusEl.innerText = `WELCOME, PIONEER [${auth.user.username}]`;
+            const auth = await Pi.authenticate(['username', 'payments'], onIncompletePaymentFound);
+            statusEl.innerText = `CONNECTED: ${auth.user.username}`;
             authSec.style.display = 'none';
             paySec.style.display = 'block';
         } catch (err) {
-            statusEl.innerText = "AUTH_ERROR: CHECK PI BROWSER";
-            console.error(err);
+            statusEl.innerText = "AUTH ERROR: USE PI BROWSER";
         }
     }
 
@@ -64,38 +60,39 @@
         statusEl.innerText = "OPENING WALLET...";
 
         try {
-            const payment = await Pi.createPayment({
-                amount: 0.001,
-                memo: "Cyber-Latte Refuel",
-                metadata: { orderId: "BREW-" + Date.now() },
+            await Pi.createPayment({
+                amount: 0.01,
+                memo: "Step 10 Final Pass",
+                metadata: { orderId: "FINAL-PASS-" + Date.now() },
             }, {
                 onReadyForServerApproval: (paymentId) => {
-                    statusEl.innerText = "WAITING FOR APPROVAL...";
-                    // Normally you'd call your server here. 
-                    // For Step 10, the UI will trigger the Pi Wallet overlay.
+                    statusEl.innerText = "WAITING FOR BACKEND...";
+                    fetch('/api/approve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paymentId })
+                    });
                 },
                 onReadyForServerCompletion: (paymentId, txid) => {
-                    statusEl.innerText = "TRANSACTION SUCCESSFUL!";
+                    statusEl.innerText = "PAYMENT SUCCESSFUL!";
+                    fetch('/api/complete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paymentId, txid })
+                    }).then(() => {
+                        statusEl.innerText = "STEP 10 VERIFIED! REFRESH PORTAL.";
+                    });
                 },
-                onCancel: (paymentId) => {
-                    statusEl.innerText = "TRANSACTION ABORTED.";
-                    payBtn.disabled = false;
-                },
-                onError: (error, payment) => {
-                    statusEl.innerText = "TRANSACTION_FAILURE";
-                    payBtn.disabled = false;
-                },
+                onCancel: () => { statusEl.innerText = "CANCELLED"; payBtn.disabled = false; },
+                onError: () => { statusEl.innerText = "ERROR"; payBtn.disabled = false; },
             });
         } catch (err) {
-            statusEl.innerText = "SYSTEM_CRASH_DURING_PAY";
+            statusEl.innerText = "FAIL";
             payBtn.disabled = false;
         }
     }
 
-    function onIncompletePaymentFound(payment) {
-        statusEl.innerText = "RECOVERING PENDING PAYMENT...";
-    }
+    function onIncompletePaymentFound(payment) { statusEl.innerText = "RECOVERING..."; }
 </script>
-
 </body>
 </html>
