@@ -8,22 +8,21 @@
     <style>
         :root { --neon: #00f2ff; --pink: #ff00ff; --bg: #050505; }
         body { background: var(--bg); color: #fff; font-family: monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .nexus { border: 2px solid var(--neon); padding: 25px; text-align: center; box-shadow: 0 0 15px var(--neon); }
-        .status { color: var(--neon); font-size: 0.8rem; margin: 15px 0; border: 1px solid #333; padding: 5px; }
-        button { background: transparent; border: 2px solid var(--pink); color: var(--pink); padding: 12px 24px; cursor: pointer; box-shadow: 0 0 10px var(--pink); }
+        .nexus { border: 2px solid var(--neon); padding: 30px; border-radius: 10px; box-shadow: 0 0 20px var(--neon); text-align: center; background: rgba(0,0,0,0.9); }
+        .status { color: var(--neon); margin: 15px 0; padding: 10px; border: 1px solid #333; font-size: 0.9rem; }
+        button { background: transparent; border: 2px solid var(--pink); color: var(--pink); padding: 15px 30px; cursor: pointer; font-weight: bold; box-shadow: 0 0 10px var(--pink); }
+        button:disabled { border-color: #444; color: #444; box-shadow: none; }
     </style>
 </head>
 <body>
 
 <div class="nexus">
     <h1>.PI BREW</h1>
-    <div class="status" id="status">INIT...</div>
-    <div id="auth-box">
-        <button onclick="login()">LOG IN</button>
-    </div>
-    <div id="pay-box" style="display:none;">
-        <button onclick="pay()">SEND 0.01 TEST-PI</button>
-    </div>
+    <p style="color:var(--neon)">1 PI = $314,159</p>
+    <div class="status" id="status">WAITING...</div>
+    
+    <div id="auth-box"><button onclick="login()">INITIALIZE ACCESS</button></div>
+    <div id="pay-box" style="display:none;"><button id="pay-btn" onclick="pay()">PAY 0.01 TEST-PI</button></div>
 </div>
 
 <script>
@@ -33,34 +32,47 @@
     async function login() {
         try {
             const auth = await Pi.authenticate(['username', 'payments'], onIncomplete);
-            document.getElementById('status').innerText = `USER: ${auth.user.username}`;
+            document.getElementById('status').innerText = `IDENTIFIED: ${auth.user.username}`;
             document.getElementById('auth-box').style.display = 'none';
             document.getElementById('pay-box').style.display = 'block';
-        } catch (e) { document.getElementById('status').innerText = "AUTH FAIL"; }
+        } catch (e) { document.getElementById('status').innerText = "ERROR: USE PI BROWSER"; }
     }
 
     async function pay() {
-        document.getElementById('status').innerText = "OPENING WALLET...";
+        const btn = document.getElementById('pay-btn');
+        const status = document.getElementById('status');
+        btn.disabled = true;
+        status.innerText = "OPENING WALLET...";
+
         Pi.createPayment({
             amount: 0.01,
-            memo: "Step 10 Test",
-            metadata: { orderId: "123" }
+            memo: "Step 10 Final Pass",
+            metadata: { orderId: "pibrew_" + Date.now() }
         }, {
             onReadyForServerApproval: (paymentId) => {
-                document.getElementById('status').innerText = "APPROVING...";
-                fetch('/api/approve', { method: 'POST', body: JSON.stringify({ paymentId }) });
+                status.innerText = "SERVER APPROVING...";
+                fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId })
+                });
             },
             onReadyForServerCompletion: (paymentId, txid) => {
-                document.getElementById('status').innerText = "COMPLETING...";
-                fetch('/api/complete', { method: 'POST', body: JSON.stringify({ paymentId, txid }) })
-                .then(() => { document.getElementById('status').innerText = "VERIFIED!"; });
+                status.innerText = "COMPLETING...";
+                fetch('/api/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId, txid })
+                }).then(() => {
+                    status.innerText = "SUCCESS! REFRESH STEP 10.";
+                });
             },
-            onCancel: () => { document.getElementById('status').innerText = "CANCELLED"; },
-            onError: (e) => { document.getElementById('status').innerText = "ERROR"; }
+            onCancel: () => { status.innerText = "CANCELLED"; btn.disabled = false; },
+            onError: (e) => { status.innerText = "PAYMENT ERROR"; btn.disabled = false; }
         });
     }
 
-    function onIncomplete(p) { console.log("Incomplete found", p); }
+    function onIncomplete(p) { console.log(p); }
 </script>
 </body>
 </html>
