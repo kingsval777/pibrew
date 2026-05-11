@@ -1,4 +1,7 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
-  res.status(200).json({ action: "complete" });
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.method === 'POST') {
+    return res.status(200).json({ action: "complete" });
+  }
+  res.status(405).end();
 }
