@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi Brew Cyber Cafe</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <style>
+        body { background: #0a0a0a; color: #fff; font-family: sans-serif; text-align: center; padding: 50px; }
+        .card { border: 1px solid #ff00ff; padding: 20px; border-radius: 15px; background: rgba(255,0,255,0.05); }
+        button { background: #ff00ff; color: #white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>PI BREW</h1>
+        <p>Fixed GCV: 1 Pi = $314,159</p>
+        <div id="user-info">Authenticating...</div>
+        <button onclick="login()">Login with Pi</button>
+    </div>
+
+    <script>
+        const Pi = window.Pi;
+        Pi.init({ version: "2.0", sandbox: true });
+
+        async function login() {
+            try {
+                const scopes = ['username', 'payments'];
+                const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+                document.getElementById('user-info').innerText = "Welcome, " + auth.user.username;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function onIncompletePaymentFound(payment) { /* Handle later */ }
+    </script>
+</body>
+</html>
